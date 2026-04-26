@@ -8,6 +8,7 @@ const state = {
   viewMode: "preview",
   isGenerating: false,
   siteLanguage: "et",
+  aiProvider: "openai",
 };
 
 const elements = {
@@ -17,7 +18,7 @@ const elements = {
   topicCustom: document.querySelector("#topic-custom"),
   language: document.querySelector("#language"),
   days: document.querySelector("#days"),
-  provider: document.querySelector("#provider"),
+  aiToggle: document.querySelector("#ai-toggle"),
   sourceText: document.querySelector("#sourceText"),
   helperText: document.querySelector("#form-helper-text"),
   libraryTree: document.querySelector("#library-tree"),
@@ -172,6 +173,7 @@ async function boot() {
 function bindEvents() {
   elements.form.addEventListener("submit", handleGenerate);
   elements.topicSelect.addEventListener("change", handleTopicSelectionChange);
+  elements.aiToggle.addEventListener("click", handleAiToggle);
   elements.refreshLibraryButton.addEventListener("click", async () => {
     await loadLibrary({ preserveSelection: true });
     showToast(t("libraryRefreshed"));
@@ -284,7 +286,7 @@ async function handleGenerate(event) {
     language: elements.language.value.trim(),
     days: Number(elements.days.value),
     sourceText: elements.sourceText.value,
-    provider: elements.provider.value.trim() || undefined,
+    provider: state.aiProvider,
   };
 
   if (!payload.topic) {
@@ -348,32 +350,39 @@ async function openDocument(courseId, fileName, options = {}) {
 }
 
 function renderConfig() {
-  const configured = Boolean(state.config?.apiConfigured);
   const providers = state.config?.providers || {};
-  const activeProvider = state.config?.activeProvider || "unknown";
+  const hasOpenAI = providers.openai?.configured;
+  const hasGemini = providers.gemini?.configured;
   
-  let statusText = t("apiMissing");
-  if (providers.openai?.configured) {
-    statusText = "OpenAI ready";
-  } else if (providers.gemini?.configured) {
-    statusText = "Gemini ready";
+  elements.aiToggle.textContent = state.aiProvider === "gemini" ? "Gemini" : "OpenAI";
+  elements.aiToggle.classList.toggle("error", state.aiProvider === "gemini" ? !hasGemini : !hasOpenAI);
+  elements.aiToggle.disabled = state.aiProvider === "gemini" ? !hasGemini : !hasOpenAI;
+  
+  const model = state.aiProvider === "gemini" ? providers.gemini?.model : providers.openai?.model;
+  elements.modelChip.textContent = `${t("model")}: ${model || "-"}`;
+  
+  const configured = hasOpenAI || hasGemini;
+  elements.helperText.innerHTML = configured ? t("helperReady") : t("helperMissing");
+}
+
+function handleAiToggle() {
+  const providers = state.config?.providers || {};
+  const hasOpenAI = providers.openai?.configured;
+  const hasGemini = providers.gemini?.configured;
+  
+  if (state.aiProvider === "openai" && hasGemini) {
+    state.aiProvider = "gemini";
+  } else if (state.aiProvider === "gemini" && hasOpenAI) {
+    state.aiProvider = "openai";
+  } else if (hasGemini) {
+    state.aiProvider = "gemini";
+  } else {
+    state.aiProvider = "openai";
   }
-  
-  if (providers.openai?.configured && providers.gemini?.configured) {
-    statusText = `${activeProvider.toUpperCase()} active`;
-  }
-  
-  elements.apiStatusChip.textContent = statusText;
-  elements.apiStatusChip.classList.toggle("error", !configured);
-  elements.modelChip.textContent = `${t("model")}: ${state.config?.model || "-"}`;
-  elements.helperText.innerHTML = configured
-    ? t("helperReady")
-    : t("helperMissing");
+  renderConfig();
 }
 
 function renderConfigError(error) {
-  elements.apiStatusChip.textContent = t("serverNotReachable");
-  elements.apiStatusChip.classList.add("error");
   elements.modelChip.textContent = `${t("model")}: -`;
   elements.helperText.textContent = error.message || "Could not reach the backend.";
   elements.libraryTree.innerHTML =
