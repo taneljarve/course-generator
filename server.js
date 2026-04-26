@@ -327,8 +327,10 @@ async function generateCourse(input) {
   let parsed;
 
   const apiProvider = input.provider || API_PROVIDER;
+  const hasOpenAI = Boolean(process.env.OPENAI_API_KEY);
+  const hasGemini = Boolean(process.env.GEMINI_API_KEY);
 
-  if (apiProvider === "gemini" && gemini) {
+  if (apiProvider === "gemini" && hasGemini) {
     console.log("[DEBUG] Using Gemini, model:", GEMINI_MODEL);
     const model = gemini.getGenerativeModel({ model: GEMINI_MODEL });
     const result = await model.generateContent(userPrompt);
