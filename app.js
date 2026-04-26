@@ -7,7 +7,7 @@ const state = {
   expandedCourses: new Set(),
   viewMode: "preview",
   isGenerating: false,
-  siteLanguage: "en",
+  siteLanguage: "et",
 };
 
 const elements = {
