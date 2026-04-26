@@ -15,11 +15,11 @@ const __dirname = path.dirname(__filename);
 
 const PORT = Number(process.env.PORT || 3000);
 
-// Use /tmp on Vercel for AI-generated courses, local folder for hardcoded courses
+// On Vercel, both roots should point to /tmp (we copy hardcoded courses there at startup)
 const GENERATED_ROOT = process.env.VERCEL
   ? path.join(os.tmpdir(), "opitee-generated-courses")
-  : path.join(__dirname, "generated-courses");
-const HARDCODED_ROOT = path.join(__dirname, "generated-courses");
+  : path.join(process.cwd(), "generated-courses");
+const HARDCODED_ROOT = path.join(process.cwd(), "generated-courses");
 
 const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4-mini";
 const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
@@ -164,6 +164,24 @@ server.listen(PORT, () => {
 
 async function ensureGeneratedRoot() {
   await fs.mkdir(GENERATED_ROOT, { recursive: true });
+
+  // If on Vercel and temp dir is empty, copy hardcoded courses
+  if (process.env.VERCEL) {
+    const entries = await fs.readdir(GENERATED_ROOT).catch(() => []);
+    if (entries.length === 0 && process.env.VERCEL) {
+      try {
+        const hardcoded = await fs.readdir(HARDCODED_ROOT);
+        for (const folder of hardcoded) {
+          const src = path.join(HARDCODED_ROOT, folder);
+          const dest = path.join(GENERATED_ROOT, folder);
+          const stat = await fs.stat(src);
+          if (stat.isDirectory()) {
+            await fs.cp(src, dest, { recursive: true });
+          }
+        }
+      } catch {}
+    }
+  }
 }
 
 async function listCourseLibrary() {
