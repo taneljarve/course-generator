@@ -19,7 +19,7 @@ const GENERATED_ROOT = process.env.VERCEL
 const HARDCODED_ROOT = path.join(process.cwd(), "generated-courses");
 
 const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash-001";
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 const MAX_BODY_SIZE = 5 * 1024 * 1024;
 
 const markdown = new MarkdownIt({
