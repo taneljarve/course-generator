@@ -123,12 +123,20 @@ const server = http.createServer(async (request, response) => {
       let course;
       try {
         course = await generateCourse(input);
+        console.log("[DEBUG] Course generated successfully");
       } catch (genError) {
         console.error("[ERROR] generateCourse failed:", genError.message);
         return sendJson(response, 502, { error: genError.message });
       }
       
-      const savedCourse = await persistCourse(course, input);
+      let savedCourse;
+      try {
+        savedCourse = await persistCourse(course, input);
+        console.log("[DEBUG] Course saved successfully");
+      } catch (persistError) {
+        console.error("[ERROR] persistCourse failed:", persistError.message);
+        return sendJson(response, 500, { error: "Failed to save course: " + persistError.message });
+      }
 
       return sendJson(response, 200, {
         course: {
@@ -474,6 +482,8 @@ async function persistCourse(course, input) {
   const courseId = `${timestampSlug}-${baseSlug}`;
   const courseDir = path.join(GENERATED_ROOT, courseId);
 
+  console.log("[DEBUG] Saving course to:", courseDir);
+  
   await fs.mkdir(courseDir, { recursive: true });
 
   const files = [
@@ -487,11 +497,15 @@ async function persistCourse(course, input) {
     })),
   ];
 
-  await Promise.all(
-    files.map((file) =>
-      fs.writeFile(path.join(courseDir, file.fileName), file.content, "utf8")
-    )
-  );
+  for (const file of files) {
+    try {
+      await fs.writeFile(path.join(courseDir, file.fileName), file.content, "utf8");
+      console.log("[DEBUG] Saved file:", file.fileName);
+    } catch (writeErr) {
+      console.error("[ERROR] Failed to save file:", file.fileName, writeErr.message);
+      throw createError(500, "Failed to save file: " + writeErr.message);
+    }
+  }
 
   const meta = {
     id: courseId,
