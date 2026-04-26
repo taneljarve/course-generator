@@ -41,7 +41,6 @@ const elements = {
   customTopicLabel: document.querySelector("#custom-topic-label"),
   languageLabel: document.querySelector("#language-label"),
   daysLabel: document.querySelector("#days-label"),
-  providerLabel: document.querySelector("#provider-label"),
   sourceTextLabel: document.querySelector("#source-text-label"),
   libraryTitle: document.querySelector("#library-title"),
   librarySubtitle: document.querySelector("#library-subtitle"),
@@ -70,7 +69,7 @@ const TRANSLATIONS = {
     customTopicPlaceholder: "Write your own topic",
     languageLabel: "Language",
     daysLabel: "Days",
-    providerLabel: "Provider",
+    providerLabel: "AI",
     sourceTextLabel: "Source text",
     sourceTextPlaceholder:
       "Paste long source material here. This can be many paragraphs or multiple pages.",
@@ -120,7 +119,7 @@ const TRANSLATIONS = {
     customTopicPlaceholder: "Kirjuta oma teema",
     languageLabel: "Keel",
     daysLabel: "Päevad",
-    providerLabel: "Pakkujat",
+    providerLabel: "AI",
     sourceTextLabel: "Lähte tekst",
     sourceTextPlaceholder:
       "Kleebi siia pikem algmaterjal. See võib olla mitu lõiku või mitu lehekülge.",
@@ -555,7 +554,6 @@ function applySiteLanguage() {
   elements.topicCustom.placeholder = t("customTopicPlaceholder");
   elements.languageLabel.textContent = t("languageLabel");
   elements.daysLabel.textContent = t("daysLabel");
-  elements.providerLabel.textContent = t("providerLabel");
   elements.sourceTextLabel.textContent = t("sourceTextLabel");
   elements.sourceText.placeholder = t("sourceTextPlaceholder");
   elements.libraryTitle.textContent = t("libraryTitle");

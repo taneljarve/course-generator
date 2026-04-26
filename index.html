@@ -28,7 +28,12 @@
             <button type="button" class="button small" data-site-lang="en">ENG</button>
             <button type="button" class="button small active" data-site-lang="et">EST</button>
           </div>
-          <div class="status-chip" id="api-status-chip">Checking API...</div>
+          <select id="provider" class="status-chip" aria-label="AI Provider">
+            <option value="">Auto</option>
+            <option value="openai">OpenAI</option>
+            <option value="gemini">Gemini</option>
+          </select>
+          <div class="status-chip subtle" id="api-status-chip">Checking API...</div>
           <div class="status-chip subtle" id="model-chip">Model: -</div>
         </div>
       </header>
@@ -91,16 +96,9 @@
                     required
                   />
                 </label>
-
-                <label class="field field-small">
-                  <span id="provider-label">Provider</span>
-                  <select id="provider" name="provider">
-                    <option value="">Auto</option>
-                    <option value="openai">OpenAI</option>
-                    <option value="gemini">Gemini</option>
-                  </select>
-                </label>
               </div>
+
+              <label class="field">
 
               <label class="field">
                 <span id="source-text-label">Source text</span>
