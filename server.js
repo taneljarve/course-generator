@@ -41,6 +41,14 @@ const CoursePackageSchema = z.object({
   days: z.array(DaySchema),
 });
 
+let skillMdContent = "";
+try {
+  skillMdContent = await fs.readFile(path.join(__dirname, "SKILL.md"), "utf8");
+  console.log("[DEBUG] Loaded SKILL.md");
+} catch (e) {
+  console.log("[DEBUG] No SKILL.md found, using default prompt");
+}
+
 await ensureGeneratedRoot();
 
 const server = http.createServer(async (request, response) => {
@@ -299,23 +307,31 @@ async function generateCourse(input) {
     ? `Primary source text is provided below. Use it as the main grounding material. If you add any supporting knowledge that is not directly in the source text, label that content explicitly as supplementary context and keep it concise.\n\nSOURCE TEXT:\n${input.sourceText}`
     : "No source text was provided. Build the course from general domain knowledge and keep it practical.";
 
+  const courseMethodology = `
+COURSE GENERATION METHODOLOGY (from SKILL.md):
+- Each day MUST have these 7 sections in exact order:
+  1. Learning Objectives (bullet points starting with ✅)
+  2. Key Concepts (2-3 subheadings with explanations)
+  3. Guided Explanation (teaching content with examples)
+  4. Practical Exercise (task, verification steps, hint)
+  5. Reflection Questions (2-3 questions student can self-check)
+  6. Answers (hidden in <details> tag with actual answers)
+  7. Quick Checklist (checkbox items)
+
+- Use <details><summary>Click to reveal answers</summary>ANSWER</details> format for hidden answers
+- Keep explanations concise but practical
+- Focus on the 20% that delivers 80% of results
+`;
+
   const systemPrompt = [
-    "You generate complete learning courses as Markdown files using the course generator methodology.",
+    "You generate complete learning courses using the course generator methodology.",
+    courseMethodology,
     "Return only valid JSON that matches the provided schema.",
     "The content must read well in a GitHub Markdown preview.",
-    "Do not use HTML. Use Markdown headings, bullet lists, tables where useful, fenced code blocks if relevant, and short paragraphs.",
+    "Do not use HTML. Use Markdown headings, bullet lists, tables, fenced code blocks.",
     "The requested language must be used consistently throughout the course.",
     "Create one README overview file plus one standalone day file per day.",
-    "Each day markdown must start with a level-1 heading in the form '# Day N: Title'.",
-    "Each day file MUST include these sections in order:",
-    "1. Learning Objectives (bullet points with ✅)",
-    "2. Key Concepts (2-3 subheadings with explanations)",
-    "3. Guided Explanation (teaching content with examples)",
-    "4. Practical Exercise (with clear task, verification, and hint)",
-    "5. Reflection Questions (2-3 questions)",
-    "6. Answers (hidden in <details> markdown dropdown)", 
-    "7. Quick Checklist (checkbox items)",
-    "Use <details><summary>Click to reveal answers</summary> format for hidden answers.",
+    "Each day markdown must start with a level-1 heading: '# Day N: Title'.",
   ].join(" ");
 
   const userPrompt = [
