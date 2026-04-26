@@ -25,7 +25,7 @@ const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
 const MAX_BODY_SIZE = 5 * 1024 * 1024;
 
 // Determine which API provider to use
-const API_PROVIDER = process.env.API_PROVIDER || "openai"; // 'openai' or 'gemini'
+const API_PROVIDER = process.env.API_PROVIDER || "gemini"; // 'openai' or 'gemini'
 
 const markdown = new MarkdownIt({
   html: false,
@@ -335,12 +335,13 @@ async function generateCourse(input) {
     const model = gemini.getGenerativeModel({ model: GEMINI_MODEL });
     const result = await model.generateContent(userPrompt);
     const text = result.response.text();
-    console.log("[DEBUG] Gemini raw response:", text.substring(0, 500));
+    console.log("[DEBUG] Gemini response length:", text.length);
     
     // Extract JSON from response (Gemini might wrap it)
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      throw createError(502, "Gemini did not return valid JSON.");
+      // Return the raw text for debugging
+      throw createError(502, "Gemini did not return valid JSON. Response: " + text.substring(0, 200));
     }
     
     try {
