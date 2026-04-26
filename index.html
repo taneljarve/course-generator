@@ -1,120 +1,171 @@
 <!DOCTYPE html>
-<html lang="et">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Kursusegeneraator</title>
-    <meta name="description" content="AI-powered course generator" />
+    <title>Course Generator</title>
+    <meta
+      name="description"
+      content="Generate learning content as Markdown files and read it in a GitHub-like workspace."
+    />
     <link rel="stylesheet" href="/vendor/github-markdown-dark.css" />
     <link rel="stylesheet" href="/styles.css" />
     <script src="/app.js" defer></script>
   </head>
   <body>
     <div class="shell">
-      <!-- Top Header -->
       <header class="topbar">
         <div class="brand">
-          <div class="brand-mark">K</div>
+          <div class="brand-mark">C</div>
           <div>
-            <h1>Kursusegeneraator</h1>
-            <p>AI-powered learning</p>
+            <h1 id="brand-title">Course Generator</h1>
+            <p id="brand-subtitle">Markdown-first learning workspace</p>
           </div>
         </div>
 
         <div class="topbar-meta">
-          <div class="status-indicator">
-            <span class="status-dot" id="status-dot"></span>
-            <span id="api-status-chip">-</span>
+          <div class="lang-toggle" aria-label="Site language">
+            <button type="button" class="button small" data-site-lang="en">ENG</button>
+            <button type="button" class="button small active" data-site-lang="et">EST</button>
           </div>
-          <button type="button" class="small" id="ai-toggle">AI</button>
-          <div class="lang-toggle" aria-label="Keel">
-            <button type="button" class="small" data-site-lang="et">EST</button>
-            <button type="button" class="small" data-site-lang="en">ENG</button>
-          </div>
+          <button type="button" class="status-chip" id="ai-toggle">OpenAI</button>
+          <div class="status-chip subtle" id="api-status-chip">-</div>
+          <div class="status-chip subtle" id="model-chip">Model: -</div>
         </div>
       </header>
 
-      <!-- Main Workspace -->
       <main class="workspace">
-        <!-- Left Explorer Sidebar -->
         <aside class="sidebar">
-          <!-- Generator Section -->
-          <section class="generator-section">
+          <section class="panel generator-panel">
+            <div class="panel-head">
+              <div>
+                <h2 id="generator-title">Generate course</h2>
+                <p id="generator-subtitle">Topic, language, days, and optional source text.</p>
+              </div>
+            </div>
+
             <form id="generate-form" class="generator-form">
-              <div class="field">
-                <label id="topic-label">Teema</label>
-                <select id="topic-select">
-                  <option value=" AML fundamentals">AML Fundamentals</option>
-                  <option value="Excel for beginners">Excel for Beginners</option>
-                  <option value="Python basics">Python Basics</option>
-                  <option value="Driving theory">Driving Theory</option>
-                  <option value="custom">Custom...</option>
+              <label class="field">
+                <span id="topic-label">Topic</span>
+                <select id="topic-select" name="topicSelect">
+                  <option value="AML fundamentals for fintech analysts">AML fundamentals for fintech analysts</option>
+                  <option value="Excel for beginners">Excel for beginners</option>
+                  <option value="Cybersecurity basics">Cybersecurity basics</option>
+                  <option value="Java backend development">Java backend development</option>
+                  <option value="Interview preparation for junior data analyst">Interview preparation for junior data analyst</option>
+                  <option value="custom">Custom topic...</option>
                 </select>
-              </div>
-              <div class="field hidden" id="custom-topic-field">
-                <input type="text" id="topic-custom" placeholder="Teema..." />
-              </div>
+              </label>
+
+              <label class="field hidden" id="custom-topic-field">
+                <span id="custom-topic-label">Your topic</span>
+                <input
+                  id="topic-custom"
+                  name="topicCustom"
+                  type="text"
+                  placeholder="Write your own topic"
+                />
+              </label>
+
               <div class="field-row">
-                <div class="field">
-                  <label id="language-label">Keel</label>
-                  <select id="language">
-                    <option value="Eesti">Est</option>
-                    <option value="English">Eng</option>
+                <label class="field">
+                  <span id="language-label">Language</span>
+                  <select
+                    id="language"
+                    name="language"
+                    required
+                  >
+                    <option value="Eesti">Eesti</option>
+                    <option value="English">English</option>
                   </select>
-                </div>
-                <div class="field">
-                  <label id="days-label">Päevad</label>
-                  <input id="days" type="number" value="5" min="1" max="30" />
-                </div>
+                </label>
+
+                <label class="field field-small">
+                  <span id="days-label">Days</span>
+                  <input
+                    id="days"
+                    name="days"
+                    type="number"
+                    min="1"
+                    max="30"
+                    value="5"
+                    required
+                  />
+</label>
               </div>
-              <button type="submit" class="primary" id="generate-button">Genereeri</button>
+
+              <label class="field">
+                <span id="source-text-label">Source text</span>
+                <textarea
+                  id="sourceText"
+                  name="sourceText"
+                  rows="12"
+                  placeholder="Paste long source material here. This can be many paragraphs or multiple pages."
+                ></textarea>
+              </label>
+
+              <div class="form-actions">
+                <button type="submit" class="button primary" id="generate-button">
+                  Generate Markdown course
+                </button>
+              </div>
+
+              <p class="helper-text" id="form-helper-text">
+                Generated files are saved under <code>generated-courses/</code>.
+              </p>
             </form>
           </section>
 
-          <!-- File Explorer -->
-          <div class="sidebar-tabs">
-            <button class="sidebar-tab active">Files</button>
-            <button class="sidebar-tab">Search</button>
-          </div>
-
-          <div class="explorer">
-            <!-- Language Folders -->
-            <div class="explorer-section">
-              <div class="explorer-header">
-                <span>📁 Kaustad</span>
+          <section class="panel library-panel">
+            <div class="panel-head">
+              <div>
+                <h2 id="library-title">Learning files</h2>
+                <p id="library-subtitle">Folders and Markdown files from <code>generated-courses</code>.</p>
               </div>
-              <div id="library-tree"></div>
+              <button type="button" class="button ghost small" id="refresh-library-button">
+                Refresh
+              </button>
             </div>
-          </div>
+
+            <div id="library-tree" class="library-tree"></div>
+          </section>
         </aside>
 
-        <!-- Main Content -->
-        <section class="main-content">
-          <!-- File Header -->
-          <div class="file-header">
-            <div class="breadcrumb">
-              <span class="breadcrumb-item" id="viewer-path">-</span>
+        <section class="viewer panel">
+          <div class="viewer-toolbar">
+            <div class="viewer-path">
+              <div class="viewer-label" id="viewer-open-label">Open file</div>
+              <div class="viewer-value" id="viewer-path">No file selected</div>
             </div>
-            <div class="file-actions">
-              <button type="button" class="file-tab active" data-view-mode="preview">Preview</button>
-              <button type="button" class="file-tab" data-view-mode="raw">Raw</button>
-              <button type="button" class="small" id="download-file-button" disabled>↓</button>
+
+            <div class="viewer-actions">
+              <button type="button" class="button small active" data-view-mode="preview">
+                Preview
+              </button>
+              <button type="button" class="button small" data-view-mode="raw">
+                Raw
+              </button>
+              <button type="button" class="button small" id="download-file-button" disabled>
+                Download .md
+              </button>
             </div>
           </div>
 
-          <!-- Content Area -->
-          <div class="content">
-            <div id="empty-state" class="empty-state">
-              <h2>Vali kursus</h2>
-              <p>Vali vasakult või genereeri uus</p>
-            </div>
-            <article id="markdown-preview" class="markdown-body markdown-surface hidden"></article>
-            <pre id="markdown-raw" class="hidden"></pre>
-          </div>
+          <div class="viewer-meta" id="viewer-meta">Select a Markdown file to preview it.</div>
+
+          <section id="empty-state" class="empty-state">
+            <h2 id="empty-title">No Markdown file selected</h2>
+            <p id="empty-text">
+              Generate a course or choose a file from the left sidebar. The right side will render the Markdown in a GitHub-like preview.
+            </p>
+          </section>
+
+          <article id="markdown-preview" class="markdown-body markdown-surface hidden"></article>
+          <pre id="markdown-raw" class="raw-surface hidden"></pre>
         </section>
       </main>
     </div>
 
-    <div id="toast" class="toast" aria-live="polite"></div>
+    <div id="toast" class="toast" aria-live="polite" aria-atomic="true"></div>
   </body>
 </html>
