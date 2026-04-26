@@ -2,9 +2,11 @@ import http from "node:http";
 import path from "node:path";
 import { promises as fs } from "node:fs";
 import { fileURLToPath } from "node:url";
+import os from "node:os";
 
 import MarkdownIt from "markdown-it";
 import OpenAI from "openai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { z } from "zod";
 import { zodTextFormat } from "openai/helpers/zod";
 
@@ -12,9 +14,19 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const PORT = Number(process.env.PORT || 3000);
-const GENERATED_ROOT = path.join(__dirname, "generated-courses");
-const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-5.4-mini";
+
+// Use /tmp on Vercel for AI-generated courses, local folder for hardcoded courses
+const GENERATED_ROOT = process.env.VERCEL
+  ? path.join(os.tmpdir(), "opitee-generated-courses")
+  : path.join(__dirname, "generated-courses");
+const HARDCODED_ROOT = path.join(__dirname, "generated-courses");
+
+const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4-mini";
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
 const MAX_BODY_SIZE = 5 * 1024 * 1024;
+
+// Determine which API provider to use
+const API_PROVIDER = process.env.API_PROVIDER || "openai"; // 'openai' or 'gemini'
 
 const markdown = new MarkdownIt({
   html: false,
@@ -41,6 +53,10 @@ const openai = process.env.OPENAI_API_KEY
     })
   : null;
 
+const gemini = process.env.GEMINI_API_KEY
+  ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+  : null;
+
 await ensureGeneratedRoot();
 
 const server = http.createServer(async (request, response) => {
@@ -48,10 +64,36 @@ const server = http.createServer(async (request, response) => {
     const url = new URL(request.url || "/", `http://${request.headers.host}`);
     const method = request.method || "GET";
 
+    // Add CORS headers
+    response.setHeader("Access-Control-Allow-Origin", "*");
+    response.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    response.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+    // Handle CORS preflight requests
+    if (method === "OPTIONS") {
+      response.writeHead(200);
+      response.end();
+      return;
+    }
+
     if (method === "GET" && url.pathname === "/api/config") {
+      const hasOpenAI = Boolean(process.env.OPENAI_API_KEY);
+      const hasGemini = Boolean(process.env.GEMINI_API_KEY);
+      
       return sendJson(response, 200, {
-        apiConfigured: Boolean(process.env.OPENAI_API_KEY),
-        model: OPENAI_MODEL,
+        apiConfigured: hasOpenAI || hasGemini,
+        providers: {
+          openai: {
+            configured: hasOpenAI,
+            model: OPENAI_MODEL,
+          },
+          gemini: {
+            configured: hasGemini,
+            model: GEMINI_MODEL,
+          },
+        },
+        activeProvider: API_PROVIDER,
+        model: API_PROVIDER === "openai" ? OPENAI_MODEL : GEMINI_MODEL,
       });
     }
 
@@ -76,9 +118,12 @@ const server = http.createServer(async (request, response) => {
     }
 
     if (method === "POST" && url.pathname === "/api/generate-course") {
-      if (!openai) {
+      const hasOpenAI = Boolean(process.env.OPENAI_API_KEY);
+      const hasGemini = Boolean(process.env.GEMINI_API_KEY);
+      
+      if (!hasOpenAI && !hasGemini) {
         return sendJson(response, 400, {
-          error: "OPENAI_API_KEY is missing. Set it and restart the server.",
+          error: "No API keys configured. Set OPENAI_API_KEY or GEMINI_API_KEY and restart.",
         });
       }
 
@@ -122,12 +167,22 @@ async function ensureGeneratedRoot() {
 }
 
 async function listCourseLibrary() {
-  const entries = await fs.readdir(GENERATED_ROOT, { withFileTypes: true });
-  const folders = entries.filter((entry) => entry.isDirectory() && !entry.name.startsWith("."));
+  const allDirs = new Set();
+
+  for (const dir of [GENERATED_ROOT, HARDCODED_ROOT]) {
+    try {
+      const entries = await fs.readdir(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.isDirectory() && !entry.name.startsWith(".")) {
+          allDirs.add(path.join(dir, entry.name));
+        }
+      }
+    } catch {}
+  }
 
   const courses = await Promise.all(
-    folders.map(async (folder) => {
-      const courseDir = path.join(GENERATED_ROOT, folder.name);
+    Array.from(allDirs).map(async (courseDir) => {
+      const folder = path.basename(courseDir);
       const meta = await readCourseMeta(courseDir);
       const allFiles = await fs.readdir(courseDir);
       const markdownFiles = allFiles
@@ -137,8 +192,8 @@ async function listCourseLibrary() {
       const folderStat = await fs.stat(courseDir);
 
       return {
-        id: folder.name,
-        title: meta?.courseTitle || unslugify(folder.name),
+        id: folder,
+        title: meta?.courseTitle || unslugify(folder),
         topic: meta?.topic || "",
         language: meta?.language || "",
         updatedAt: meta?.updatedAt || folderStat.mtime.toISOString(),
@@ -218,7 +273,7 @@ async function generateCourse(input) {
 
   const systemPrompt = [
     "You generate complete learning courses as Markdown files.",
-    "Return only structured data that matches the provided schema.",
+    "Return only valid JSON that matches the provided schema.",
     "The content must read well in a GitHub Markdown preview.",
     "Do not use HTML. Use Markdown headings, bullet lists, tables where useful, fenced code blocks if relevant, and short paragraphs.",
     "The requested language must be used consistently throughout the course.",
@@ -234,29 +289,66 @@ async function generateCourse(input) {
     sourceInstruction,
     "The README overview should contain a concise course summary, who it is for, how to use the course, and a day-by-day outline table.",
     "The day files should be cohesive and practical rather than generic filler.",
+    "",
+    "Return ONLY a valid JSON object with this structure (no markdown, no extra text):",
+    JSON.stringify({
+      courseTitle: "string",
+      courseSummary: "string",
+      overviewMarkdown: "string",
+      days: [
+        {
+          dayNumber: "number",
+          title: "string",
+          markdown: "string",
+        },
+      ],
+    }),
   ].join("\n\n");
 
-  const response = await openai.responses.parse({
-    model: OPENAI_MODEL,
-    input: [
-      {
-        role: "system",
-        content: systemPrompt,
-      },
-      {
-        role: "user",
-        content: userPrompt,
-      },
-    ],
-    text: {
-      format: zodTextFormat(CoursePackageSchema, "course_package"),
-    },
-  });
+  let parsed;
 
-  const parsed = response.output_parsed;
+  if (API_PROVIDER === "gemini" && gemini) {
+    const model = gemini.getGenerativeModel({ model: GEMINI_MODEL });
+    const result = await model.generateContent(userPrompt);
+    const text = result.response.text();
+    
+    // Extract JSON from response (Gemini might wrap it)
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw createError(502, "Gemini did not return valid JSON.");
+    }
+    
+    try {
+      parsed = JSON.parse(jsonMatch[0]);
+    } catch (e) {
+      throw createError(502, "Failed to parse Gemini response as JSON.");
+    }
+  } else if (openai) {
+    // Use OpenAI structured output
+    const response = await openai.responses.parse({
+      model: OPENAI_MODEL,
+      input: [
+        {
+          role: "system",
+          content: systemPrompt,
+        },
+        {
+          role: "user",
+          content: userPrompt,
+        },
+      ],
+      text: {
+        format: zodTextFormat(CoursePackageSchema, "course_package"),
+      },
+    });
+
+    parsed = response.output_parsed;
+  } else {
+    throw createError(400, "No API provider configured.");
+  }
 
   if (!parsed) {
-    throw createError(502, "OpenAI returned an empty structured response.");
+    throw createError(502, "API returned an empty structured response.");
   }
 
   const normalizedDays = normalizeGeneratedDays(parsed.days, input.days);
@@ -389,12 +481,14 @@ function safeCourseDirectory(courseId) {
     throw createError(400, "Invalid course id.");
   }
 
-  const resolved = path.resolve(GENERATED_ROOT, safeId);
-  if (!resolved.startsWith(path.resolve(GENERATED_ROOT))) {
-    throw createError(400, "Invalid course path.");
+  for (const root of [GENERATED_ROOT, HARDCODED_ROOT]) {
+    const resolved = path.resolve(root, safeId);
+    if (resolved.startsWith(path.resolve(root))) {
+      return resolved;
+    }
   }
 
-  return resolved;
+  throw createError(400, "Invalid course path.");
 }
 
 function safeMarkdownFileName(fileName) {

@@ -345,9 +345,21 @@ async function openDocument(courseId, fileName, options = {}) {
 
 function renderConfig() {
   const configured = Boolean(state.config?.apiConfigured);
-  elements.apiStatusChip.textContent = configured
-    ? t("apiReady")
-    : t("apiMissing");
+  const providers = state.config?.providers || {};
+  const activeProvider = state.config?.activeProvider || "unknown";
+  
+  let statusText = t("apiMissing");
+  if (providers.openai?.configured) {
+    statusText = "OpenAI ready";
+  } else if (providers.gemini?.configured) {
+    statusText = "Gemini ready";
+  }
+  
+  if (providers.openai?.configured && providers.gemini?.configured) {
+    statusText = `${activeProvider.toUpperCase()} active`;
+  }
+  
+  elements.apiStatusChip.textContent = statusText;
   elements.apiStatusChip.classList.toggle("error", !configured);
   elements.modelChip.textContent = `${t("model")}: ${state.config?.model || "-"}`;
   elements.helperText.innerHTML = configured

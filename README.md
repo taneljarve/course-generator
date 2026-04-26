@@ -39,10 +39,12 @@ export OPENAI_API_KEY="your_api_key_here"
 Optional:
 
 ```bash
-export OPENAI_MODEL="gpt-5.4-mini"
+export OPENAI_MODEL="gpt-4-mini"
+export API_PROVIDER="openai"  # or "gemini"
+export GEMINI_API_KEY="your_gemini_api_key_here"
 ```
 
-`gpt-5.4-mini` is the default fallback model in this project.
+`gpt-4-mini` is the default fallback model in this project.
 
 3. Start the app:
 
