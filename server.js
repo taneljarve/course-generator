@@ -8,7 +8,6 @@ import MarkdownIt from "markdown-it";
 import OpenAI from "openai";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { z } from "zod";
-import { zodTextFormat } from "openai/helpers/zod";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -346,25 +345,27 @@ async function generateCourse(input) {
       throw createError(502, "Failed to parse Gemini response as JSON.");
     }
   } else if (openai) {
-    // Use OpenAI structured output
-    const response = await openai.responses.parse({
+    // Use OpenAI chat completion and parse JSON manually
+    const response = await openai.chat.completions.create({
       model: OPENAI_MODEL,
-      input: [
-        {
-          role: "system",
-          content: systemPrompt,
-        },
-        {
-          role: "user",
-          content: userPrompt,
-        },
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
       ],
-      text: {
-        format: zodTextFormat(CoursePackageSchema, "course_package"),
-      },
+      temperature: 0.7,
     });
 
-    parsed = response.output_parsed;
+    const text = response.choices[0]?.message?.content || "";
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw createError(502, "OpenAI did not return valid JSON.");
+    }
+
+    try {
+      parsed = JSON.parse(jsonMatch[0]);
+    } catch (e) {
+      throw createError(502, "Failed to parse OpenAI response as JSON.");
+    }
   } else {
     throw createError(400, "No API provider configured.");
   }
