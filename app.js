@@ -8,7 +8,7 @@ const state = {
   viewMode: "preview",
   isGenerating: false,
   siteLanguage: "et",
-  aiProvider: "openai",
+  aiProvider: "gemini",
 };
 
 const elements = {

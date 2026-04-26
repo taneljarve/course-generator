@@ -46,15 +46,26 @@ const CoursePackageSchema = z.object({
   days: z.array(DaySchema),
 });
 
-const openai = process.env.OPENAI_API_KEY
-  ? new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    })
-  : null;
+let openai = null;
+let gemini = null;
 
-const gemini = process.env.GEMINI_API_KEY
-  ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
-  : null;
+if (process.env.OPENAI_API_KEY) {
+  try {
+    openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    console.log("[DEBUG] OpenAI initialized");
+  } catch (e) {
+    console.error("[ERROR] Failed to init OpenAI:", e.message);
+  }
+}
+
+if (process.env.GEMINI_API_KEY) {
+  try {
+    gemini = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    console.log("[DEBUG] Gemini initialized");
+  } catch (e) {
+    console.error("[ERROR] Failed to init Gemini:", e.message);
+  }
+}
 
 await ensureGeneratedRoot();
 
@@ -78,6 +89,8 @@ const server = http.createServer(async (request, response) => {
     if (method === "GET" && url.pathname === "/api/config") {
       const hasOpenAI = Boolean(process.env.OPENAI_API_KEY);
       const hasGemini = Boolean(process.env.GEMINI_API_KEY);
+      
+      console.log("[DEBUG] /api/config - OPENAI:", hasOpenAI, "GEMINI:", hasGemini);
       
       return sendJson(response, 200, {
         apiConfigured: hasOpenAI || hasGemini,
@@ -120,6 +133,8 @@ const server = http.createServer(async (request, response) => {
       const hasOpenAI = Boolean(process.env.OPENAI_API_KEY);
       const hasGemini = Boolean(process.env.GEMINI_API_KEY);
       
+      console.log("[DEBUG] /api/generate-course - OPENAI:", hasOpenAI, "GEMINI:", hasGemini);
+      
       if (!hasOpenAI && !hasGemini) {
         return sendJson(response, 400, {
           error: "No API keys configured. Set OPENAI_API_KEY or GEMINI_API_KEY and restart.",
@@ -128,7 +143,17 @@ const server = http.createServer(async (request, response) => {
 
       const body = await parseJsonBody(request);
       const input = validateGenerationInput(body);
-      const course = await generateCourse(input);
+      
+      console.log("[DEBUG] Generating course with provider:", input.provider || API_PROVIDER);
+      
+      let course;
+      try {
+        course = await generateCourse(input);
+      } catch (genError) {
+        console.error("[ERROR] generateCourse failed:", genError.message);
+        return sendJson(response, 502, { error: genError.message });
+      }
+      
       const savedCourse = await persistCourse(course, input);
 
       return sendJson(response, 200, {
@@ -149,10 +174,12 @@ const server = http.createServer(async (request, response) => {
 
     return sendJson(response, 404, { error: "Route not found." });
   } catch (error) {
-    console.error("[ERROR]", error.message, error.stack);
+    console.error("[ERROR]", error.message);
     const statusCode = error.statusCode || 500;
-    const message =
-      statusCode >= 500 ? "Internal server error." : error.message || "Request failed.";
+    let message = error.message || "Request failed.";
+    if (statusCode >= 500) {
+      message = "Internal server error. Check logs for details.";
+    }
     return sendJson(response, statusCode, { error: message });
   }
 });
