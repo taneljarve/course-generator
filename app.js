@@ -107,8 +107,8 @@ const TRANSLATIONS = {
     filesMeta: "{count} files · {date}",
   },
   et: {
-    pageTitle: "Course Generator",
-    brandTitle: "Course Generator",
+    pageTitle: "Kursusegeneraator",
+    brandTitle: "Kursusegeneraator",
     brandSubtitle: "Markdown-põhine õpituba",
     generatorTitle: "Genereeri kursus",
     generatorSubtitle: "Teema, keel, päevade arv ja soovi korral algmaterjal.",
@@ -223,9 +223,8 @@ async function refreshConfigAndLibrary() {
     renderLibraryTree();
 
     if (state.library.length > 0) {
-      const initialCourse = state.selectedCourseId
-        ? state.library.find((course) => course.id === state.selectedCourseId)
-        : state.library[0];
+      const preferred = state.library.find((c) => c.id === "excel-for-beginners-et");
+      const initialCourse = preferred || state.library[0];
       const initialFile = pickInitialFile(initialCourse);
 
       if (initialCourse && initialFile) {
@@ -261,7 +260,8 @@ async function loadLibrary({ preserveSelection = false } = {}) {
     }
   }
 
-  const initialCourse = state.library[0];
+  const preferred = state.library.find((c) => c.id === "excel-for-beginners-et");
+  const initialCourse = preferred || state.library[0];
   const initialFile = pickInitialFile(initialCourse);
 
   if (initialCourse && initialFile) {
