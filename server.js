@@ -5,16 +5,14 @@ import { fileURLToPath } from "node:url";
 import os from "node:os";
 
 import MarkdownIt from "markdown-it";
-import OpenAI from "openai";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { z } from "zod";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const PORT = Number(process.env.PORT || 3000);
+const API_PROVIDER = process.env.API_PROVIDER || "gemini";
 
-// On Vercel, both roots should point to /tmp (we copy hardcoded courses there at startup)
 const GENERATED_ROOT = process.env.VERCEL
   ? path.join(os.tmpdir(), "opitee-generated-courses")
   : path.join(process.cwd(), "generated-courses");
@@ -23,9 +21,6 @@ const HARDCODED_ROOT = path.join(process.cwd(), "generated-courses");
 const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
 const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
 const MAX_BODY_SIZE = 5 * 1024 * 1024;
-
-// Determine which API provider to use
-const API_PROVIDER = process.env.API_PROVIDER || "gemini"; // 'openai' or 'gemini'
 
 const markdown = new MarkdownIt({
   html: false,
@@ -45,27 +40,6 @@ const CoursePackageSchema = z.object({
   overviewMarkdown: z.string().min(1),
   days: z.array(DaySchema),
 });
-
-let openai = null;
-let gemini = null;
-
-if (process.env.OPENAI_API_KEY) {
-  try {
-    openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    console.log("[DEBUG] OpenAI initialized");
-  } catch (e) {
-    console.error("[ERROR] Failed to init OpenAI:", e.message);
-  }
-}
-
-if (process.env.GEMINI_API_KEY) {
-  try {
-    gemini = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    console.log("[DEBUG] Gemini initialized");
-  } catch (e) {
-    console.error("[ERROR] Failed to init Gemini:", e.message);
-  }
-}
 
 await ensureGeneratedRoot();
 
@@ -362,52 +336,85 @@ async function generateCourse(input) {
   console.log("[DEBUG] Gemini key exists:", hasGemini);
 
   if (apiProvider === "gemini" && hasGemini) {
-    console.log("[DEBUG] Using Gemini, model:", GEMINI_MODEL);
+    console.log("[DEBUG] Using Gemini REST API, model:", GEMINI_MODEL);
     try {
-      const model = gemini.getGenerativeModel({ model: GEMINI_MODEL });
-      const result = await model.generateContent(userPrompt);
-      const text = result.response.text();
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${process.env.GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: userPrompt }] }],
+            generationConfig: {
+              responseMimeType: "application/json",
+              temperature: 0.7,
+            }
+          })
+        }
+      );
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("[ERROR] Gemini API error:", response.status, errorText);
+        throw createError(502, "Gemini API error: " + response.status);
+      }
+      
+      const data = await response.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
       console.log("[DEBUG] Gemini response length:", text.length);
       
-      // Extract JSON from response (Gemini might wrap it)
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        // Return the raw text for debugging
         throw createError(502, "Gemini did not return valid JSON. Response: " + text.substring(0, 200));
       }
       
-      try {
-        parsed = JSON.parse(jsonMatch[0]);
-      } catch (e) {
-        throw createError(502, "Failed to parse Gemini response as JSON.");
-      }
+      parsed = JSON.parse(jsonMatch[0]);
     } catch (geminiError) {
-      console.error("[ERROR] Gemini API error:", geminiError.message);
+      console.error("[ERROR] Gemini error:", geminiError.message);
       throw createError(502, "Gemini error: " + geminiError.message);
     }
-  } else if (openai) {
-    // Use OpenAI chat completion and parse JSON manually
-    console.log("[DEBUG] Using OpenAI, model:", OPENAI_MODEL);
-    const response = await openai.chat.completions.create({
-      model: OPENAI_MODEL,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      temperature: 0.7,
-    });
-
-    const text = response.choices[0]?.message?.content || "";
-    console.log("[DEBUG] OpenAI raw response:", text.substring(0, 500));
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw createError(502, "OpenAI did not return valid JSON.");
-    }
-
+  } else if (hasOpenAI) {
+    // Use OpenAI REST API
+    console.log("[DEBUG] Using OpenAI REST API, model:", OPENAI_MODEL);
     try {
+      const response = await fetch(
+        "https://api.openai.com/v1/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
+          },
+          body: JSON.stringify({
+            model: OPENAI_MODEL,
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userPrompt }
+            ],
+            temperature: 0.7
+          })
+        }
+      );
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("[ERROR] OpenAI API error:", response.status, errorText);
+        throw createError(502, "OpenAI API error: " + response.status);
+      }
+      
+      const data = await response.json();
+      const text = data.choices?.[0]?.message?.content || "";
+      console.log("[DEBUG] OpenAI response length:", text.length);
+      
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw createError(502, "OpenAI did not return valid JSON. Response: " + text.substring(0, 200));
+      }
+      
       parsed = JSON.parse(jsonMatch[0]);
-    } catch (e) {
-      throw createError(502, "Failed to parse OpenAI response as JSON.");
+    } catch (openaiError) {
+      console.error("[ERROR] OpenAI error:", openaiError.message);
+      throw createError(502, "OpenAI error: " + openaiError.message);
     }
   } else {
     throw createError(400, "No API provider configured.");
