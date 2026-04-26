@@ -353,13 +353,34 @@ function renderConfig() {
   const providers = state.config?.providers || {};
   const hasOpenAI = providers.openai?.configured;
   const hasGemini = providers.gemini?.configured;
+  const activeProvider = state.aiProvider;
   
-  elements.aiToggle.textContent = state.aiProvider === "gemini" ? "Gemini" : "OpenAI";
-  elements.aiToggle.classList.toggle("error", state.aiProvider === "gemini" ? !hasGemini : !hasOpenAI);
-  elements.aiToggle.disabled = state.aiProvider === "gemini" ? !hasGemini : !hasOpenAI;
+  let statusText = "Not configured";
+  let isError = true;
   
-  const model = state.aiProvider === "gemini" ? providers.gemini?.model : providers.openai?.model;
-  elements.modelChip.textContent = `${t("model")}: ${model || "-"}`;
+  if (activeProvider === "gemini" && hasGemini) {
+    statusText = "Gemini working";
+    isError = false;
+  } else if (activeProvider === "openai" && hasOpenAI) {
+    statusText = "OpenAI working";
+    isError = false;
+  } else if (hasOpenAI) {
+    statusText = "OpenAI working";
+    isError = false;
+  } else if (hasGemini) {
+    statusText = "Gemini working";
+    isError = false;
+  }
+  
+  elements.apiStatusChip.textContent = statusText;
+  elements.apiStatusChip.classList.toggle("error", isError);
+  
+  elements.aiToggle.textContent = activeProvider === "gemini" ? "Gemini" : "OpenAI";
+  elements.aiToggle.classList.toggle("error", activeProvider === "gemini" ? !hasGemini : !hasOpenAI);
+  elements.aiToggle.disabled = activeProvider === "gemini" ? !hasGemini : !hasOpenAI;
+  
+  const model = activeProvider === "gemini" ? providers.gemini?.model : providers.openai?.model;
+  elements.modelChip.textContent = `Model: ${model || "-"}`;
   
   const configured = hasOpenAI || hasGemini;
   elements.helperText.innerHTML = configured ? t("helperReady") : t("helperMissing");

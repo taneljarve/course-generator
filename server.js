@@ -357,24 +357,33 @@ async function generateCourse(input) {
   const hasOpenAI = Boolean(process.env.OPENAI_API_KEY);
   const hasGemini = Boolean(process.env.GEMINI_API_KEY);
 
+  console.log("[DEBUG] API Provider selected:", apiProvider);
+  console.log("[DEBUG] OpenAI key exists:", hasOpenAI);
+  console.log("[DEBUG] Gemini key exists:", hasGemini);
+
   if (apiProvider === "gemini" && hasGemini) {
     console.log("[DEBUG] Using Gemini, model:", GEMINI_MODEL);
-    const model = gemini.getGenerativeModel({ model: GEMINI_MODEL });
-    const result = await model.generateContent(userPrompt);
-    const text = result.response.text();
-    console.log("[DEBUG] Gemini response length:", text.length);
-    
-    // Extract JSON from response (Gemini might wrap it)
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      // Return the raw text for debugging
-      throw createError(502, "Gemini did not return valid JSON. Response: " + text.substring(0, 200));
-    }
-    
     try {
-      parsed = JSON.parse(jsonMatch[0]);
-    } catch (e) {
-      throw createError(502, "Failed to parse Gemini response as JSON.");
+      const model = gemini.getGenerativeModel({ model: GEMINI_MODEL });
+      const result = await model.generateContent(userPrompt);
+      const text = result.response.text();
+      console.log("[DEBUG] Gemini response length:", text.length);
+      
+      // Extract JSON from response (Gemini might wrap it)
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        // Return the raw text for debugging
+        throw createError(502, "Gemini did not return valid JSON. Response: " + text.substring(0, 200));
+      }
+      
+      try {
+        parsed = JSON.parse(jsonMatch[0]);
+      } catch (e) {
+        throw createError(502, "Failed to parse Gemini response as JSON.");
+      }
+    } catch (geminiError) {
+      console.error("[ERROR] Gemini API error:", geminiError.message);
+      throw createError(502, "Gemini error: " + geminiError.message);
     }
   } else if (openai) {
     // Use OpenAI chat completion and parse JSON manually
