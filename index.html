@@ -4,120 +4,117 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Kursusegeneraator</title>
-    <meta name="description" content="Genereeri õpikursusi Markdown formaadis" />
+    <meta name="description" content="AI-powered course generator" />
     <link rel="stylesheet" href="/vendor/github-markdown-dark.css" />
     <link rel="stylesheet" href="/styles.css" />
     <script src="/app.js" defer></script>
   </head>
   <body>
     <div class="shell">
+      <!-- Top Header -->
       <header class="topbar">
         <div class="brand">
           <div class="brand-mark">K</div>
           <div>
-            <h1 id="brand-title">Kursusegeneraator</h1>
-            <p id="brand-subtitle">AI-powered learning</p>
+            <h1>Kursusegeneraator</h1>
+            <p>AI-powered learning</p>
           </div>
         </div>
 
         <div class="topbar-meta">
-          <div class="lang-toggle" aria-label="Keel">
-            <button type="button" class="button small" data-site-lang="et">EST</button>
-            <button type="button" class="button small" data-site-lang="en">ENG</button>
+          <div class="status-indicator">
+            <span class="status-dot" id="status-dot"></span>
+            <span id="api-status-chip">-</span>
           </div>
-          <button type="button" class="status-chip" id="ai-toggle">Gemini</button>
-          <div class="status-chip subtle" id="api-status-chip">-</div>
+          <button type="button" class="small" id="ai-toggle">AI</button>
+          <div class="lang-toggle" aria-label="Keel">
+            <button type="button" class="small" data-site-lang="et">EST</button>
+            <button type="button" class="small" data-site-lang="en">ENG</button>
+          </div>
         </div>
       </header>
 
+      <!-- Main Workspace -->
       <main class="workspace">
+        <!-- Left Explorer Sidebar -->
         <aside class="sidebar">
-          <section class="panel generator-panel">
-            <div class="panel-head">
-              <div>
-                <h2 id="generator-title">Genereeri kursus</h2>
-                <p id="generator-subtitle">Teema, keel, päevad</p>
-              </div>
-            </div>
-
+          <!-- Generator Section -->
+          <section class="generator-section">
             <form id="generate-form" class="generator-form">
-              <label class="field">
-                <span id="topic-label">Teema</span>
-                <select id="topic-select" name="topicSelect">
+              <div class="field">
+                <label id="topic-label">Teema</label>
+                <select id="topic-select">
                   <option value=" AML fundamentals">AML Fundamentals</option>
                   <option value="Excel for beginners">Excel for Beginners</option>
                   <option value="Python basics">Python Basics</option>
-                  <option value="Cybersecurity basics">Cybersecurity</option>
                   <option value="Driving theory">Driving Theory</option>
                   <option value="custom">Custom...</option>
                 </select>
-              </label>
-
-              <label class="field hidden" id="custom-topic-field">
-                <span id="custom-topic-label">Sinu teema</span>
-                <input type="text" id="topic-custom" placeholder="Kirjuta teema..." />
-              </label>
-
+              </div>
+              <div class="field hidden" id="custom-topic-field">
+                <input type="text" id="topic-custom" placeholder="Teema..." />
+              </div>
               <div class="field-row">
-                <label class="field">
-                  <span id="language-label">Keel</span>
-                  <select id="language" name="language" required>
-                    <option value="Eesti">Eesti</option>
-                    <option value="English">English</option>
+                <div class="field">
+                  <label id="language-label">Keel</label>
+                  <select id="language">
+                    <option value="Eesti">Est</option>
+                    <option value="English">Eng</option>
                   </select>
-                </label>
-                <label class="field">
-                  <span id="days-label">Päevad</span>
-                  <input id="days" name="days" type="number" min="1" max="30" value="5" required />
-                </label>
+                </div>
+                <div class="field">
+                  <label id="days-label">Päevad</label>
+                  <input id="days" type="number" value="5" min="1" max="30" />
+                </div>
               </div>
-
-              <div class="form-actions">
-                <button type="submit" class="button primary" id="generate-button">Genereeri</button>
-              </div>
-
-              <p class="helper-text" id="form-helper-text">Genereeritud failid salvestatakse kaustas generated-courses/</p>
+              <button type="submit" class="primary" id="generate-button">Genereeri</button>
             </form>
           </section>
 
-          <section class="panel library-panel">
-            <div class="panel-head">
-              <div>
-                <h2 id="library-title">Kursused</h2>
-                <p id="library-subtitle">Saadaolevad õpifailid</p>
+          <!-- File Explorer -->
+          <div class="sidebar-tabs">
+            <button class="sidebar-tab active">Files</button>
+            <button class="sidebar-tab">Search</button>
+          </div>
+
+          <div class="explorer">
+            <!-- Language Folders -->
+            <div class="explorer-section">
+              <div class="explorer-header">
+                <span>📁 Kaustad</span>
               </div>
-              <button type="button" class="button ghost small" id="refresh-library-button">↻</button>
+              <div id="library-tree"></div>
             </div>
-            <div id="library-tree" class="library-tree"></div>
-          </section>
+          </div>
         </aside>
 
-        <section class="viewer panel">
-          <div class="viewer-toolbar">
-            <div class="viewer-path">
-              <div class="viewer-label" id="viewer-open-label">Avatud</div>
-              <div class="viewer-value" id="viewer-path">-</div>
+        <!-- Main Content -->
+        <section class="main-content">
+          <!-- File Header -->
+          <div class="file-header">
+            <div class="breadcrumb">
+              <span class="breadcrumb-item" id="viewer-path">-</span>
             </div>
-            <div class="viewer-actions">
-              <button type="button" class="button small active" data-view-mode="preview">Preview</button>
-              <button type="button" class="button small" data-view-mode="raw">Raw</button>
-              <button type="button" class="button small" id="download-file-button" disabled>↓</button>
+            <div class="file-actions">
+              <button type="button" class="file-tab active" data-view-mode="preview">Preview</button>
+              <button type="button" class="file-tab" data-view-mode="raw">Raw</button>
+              <button type="button" class="small" id="download-file-button" disabled>↓</button>
             </div>
           </div>
 
-          <div class="viewer-meta" id="viewer-meta">Vali kursus</div>
-
-          <section id="empty-state" class="empty-state">
-            <h2 id="empty-title">Vali kursus</h2>
-            <p id="empty-text">Vali vasakult poolt mõni kursus või genereeri uus</p>
-          </section>
-
-          <article id="markdown-preview" class="markdown-body markdown-surface hidden"></article>
-          <pre id="markdown-raw" class="raw-surface hidden"></pre>
+          <!-- Content Area -->
+          <div class="content">
+            <div id="empty-state" class="empty-state">
+              <h2>Vali kursus</h2>
+              <p>Vali vasakult või genereeri uus</p>
+            </div>
+            <article id="markdown-preview" class="markdown-body markdown-surface hidden"></article>
+            <pre id="markdown-raw" class="hidden"></pre>
+          </div>
         </section>
       </main>
     </div>
 
-    <div id="toast" class="toast" aria-live="polite" aria-atomic="true"></div>
+    <div id="toast" class="toast" aria-live="polite"></div>
   </body>
 </html>
