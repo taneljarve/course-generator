@@ -263,6 +263,7 @@ function validateGenerationInput(body) {
   const language = String(body?.language || "").trim();
   const sourceText = String(body?.sourceText || "").trim();
   const days = Math.min(30, Math.max(1, Math.round(Number(body?.days))));
+  const provider = String(body?.provider || "").trim();
 
   if (!topic) {
     throw createError(400, "Topic is required.");
@@ -281,6 +282,7 @@ function validateGenerationInput(body) {
     language,
     days,
     sourceText,
+    provider,
   };
 }
 
@@ -325,7 +327,9 @@ async function generateCourse(input) {
 
   let parsed;
 
-  if (API_PROVIDER === "gemini" && gemini) {
+  const apiProvider = input.provider || API_PROVIDER;
+
+  if (apiProvider === "gemini" && gemini) {
     const model = gemini.getGenerativeModel({ model: GEMINI_MODEL });
     const result = await model.generateContent(userPrompt);
     const text = result.response.text();

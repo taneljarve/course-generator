@@ -17,6 +17,7 @@ const elements = {
   topicCustom: document.querySelector("#topic-custom"),
   language: document.querySelector("#language"),
   days: document.querySelector("#days"),
+  provider: document.querySelector("#provider"),
   sourceText: document.querySelector("#sourceText"),
   helperText: document.querySelector("#form-helper-text"),
   libraryTree: document.querySelector("#library-tree"),
@@ -40,6 +41,7 @@ const elements = {
   customTopicLabel: document.querySelector("#custom-topic-label"),
   languageLabel: document.querySelector("#language-label"),
   daysLabel: document.querySelector("#days-label"),
+  providerLabel: document.querySelector("#provider-label"),
   sourceTextLabel: document.querySelector("#source-text-label"),
   libraryTitle: document.querySelector("#library-title"),
   librarySubtitle: document.querySelector("#library-subtitle"),
@@ -68,11 +70,12 @@ const TRANSLATIONS = {
     customTopicPlaceholder: "Write your own topic",
     languageLabel: "Language",
     daysLabel: "Days",
+    providerLabel: "Provider",
     sourceTextLabel: "Source text",
     sourceTextPlaceholder:
       "Paste long source material here. This can be many paragraphs or multiple pages.",
     generateButton: "Generate Markdown course",
-    generatingButton: "Generating with OpenAI...",
+    generatingButton: "Generating...",
     helperReady: 'Generated files are saved under <code>generated-courses/</code>.',
     helperMissing:
       'Set <code>OPENAI_API_KEY</code> and restart the server before generating.',
@@ -117,11 +120,12 @@ const TRANSLATIONS = {
     customTopicPlaceholder: "Kirjuta oma teema",
     languageLabel: "Keel",
     daysLabel: "Päevad",
+    providerLabel: "Pakkujat",
     sourceTextLabel: "Lähte tekst",
     sourceTextPlaceholder:
       "Kleebi siia pikem algmaterjal. See võib olla mitu lõiku või mitu lehekülge.",
     generateButton: "Genereeri Markdown kursus",
-    generatingButton: "Genereerin OpenAI abil...",
+    generatingButton: "Genereerin...",
     helperReady: 'Genereeritud failid salvestatakse kausta <code>generated-courses/</code>.',
     helperMissing:
       'Sea <code>OPENAI_API_KEY</code> ja käivita server uuesti enne genereerimist.',
@@ -281,6 +285,7 @@ async function handleGenerate(event) {
     language: elements.language.value.trim(),
     days: Number(elements.days.value),
     sourceText: elements.sourceText.value,
+    provider: elements.provider.value.trim() || undefined,
   };
 
   if (!payload.topic) {
@@ -550,6 +555,7 @@ function applySiteLanguage() {
   elements.topicCustom.placeholder = t("customTopicPlaceholder");
   elements.languageLabel.textContent = t("languageLabel");
   elements.daysLabel.textContent = t("daysLabel");
+  elements.providerLabel.textContent = t("providerLabel");
   elements.sourceTextLabel.textContent = t("sourceTextLabel");
   elements.sourceText.placeholder = t("sourceTextPlaceholder");
   elements.libraryTitle.textContent = t("libraryTitle");
