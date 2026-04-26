@@ -149,7 +149,7 @@ const server = http.createServer(async (request, response) => {
 
     return sendJson(response, 404, { error: "Route not found." });
   } catch (error) {
-    console.error(error);
+    console.error("[ERROR]", error.message, error.stack);
     const statusCode = error.statusCode || 500;
     const message =
       statusCode >= 500 ? "Internal server error." : error.message || "Request failed.";
@@ -329,9 +329,11 @@ async function generateCourse(input) {
   const apiProvider = input.provider || API_PROVIDER;
 
   if (apiProvider === "gemini" && gemini) {
+    console.log("[DEBUG] Using Gemini, model:", GEMINI_MODEL);
     const model = gemini.getGenerativeModel({ model: GEMINI_MODEL });
     const result = await model.generateContent(userPrompt);
     const text = result.response.text();
+    console.log("[DEBUG] Gemini raw response:", text.substring(0, 500));
     
     // Extract JSON from response (Gemini might wrap it)
     const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -346,6 +348,7 @@ async function generateCourse(input) {
     }
   } else if (openai) {
     // Use OpenAI chat completion and parse JSON manually
+    console.log("[DEBUG] Using OpenAI, model:", OPENAI_MODEL);
     const response = await openai.chat.completions.create({
       model: OPENAI_MODEL,
       messages: [
@@ -356,6 +359,7 @@ async function generateCourse(input) {
     });
 
     const text = response.choices[0]?.message?.content || "";
+    console.log("[DEBUG] OpenAI raw response:", text.substring(0, 500));
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       throw createError(502, "OpenAI did not return valid JSON.");
