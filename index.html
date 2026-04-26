@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Course Generator</title>
+    <meta
+      name="description"
+      content="Generate learning content as Markdown files and read it in a GitHub-like workspace."
+    />
+    <link rel="stylesheet" href="/vendor/github-markdown-dark.css" />
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-mark">C</div>
+          <div>
+            <h1 id="brand-title">Course Generator</h1>
+            <p id="brand-subtitle">Markdown-first learning workspace</p>
+          </div>
+        </div>
+
+        <div class="topbar-meta">
+          <div class="lang-toggle" aria-label="Site language">
+            <button type="button" class="button small active" data-site-lang="en">ENG</button>
+            <button type="button" class="button small" data-site-lang="et">EST</button>
+          </div>
+          <div class="status-chip" id="api-status-chip">Checking API...</div>
+          <div class="status-chip subtle" id="model-chip">Model: -</div>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <aside class="sidebar">
+          <section class="panel generator-panel">
+            <div class="panel-head">
+              <div>
+                <h2 id="generator-title">Generate course</h2>
+                <p id="generator-subtitle">Topic, language, days, and optional source text.</p>
+              </div>
+            </div>
+
+            <form id="generate-form" class="generator-form">
+              <label class="field">
+                <span id="topic-label">Topic</span>
+                <select id="topic-select" name="topicSelect">
+                  <option value="AML fundamentals for fintech analysts">AML fundamentals for fintech analysts</option>
+                  <option value="Excel for beginners">Excel for beginners</option>
+                  <option value="Cybersecurity basics">Cybersecurity basics</option>
+                  <option value="Java backend development">Java backend development</option>
+                  <option value="Interview preparation for junior data analyst">Interview preparation for junior data analyst</option>
+                  <option value="custom">Custom topic...</option>
+                </select>
+              </label>
+
+              <label class="field hidden" id="custom-topic-field">
+                <span id="custom-topic-label">Your topic</span>
+                <input
+                  id="topic-custom"
+                  name="topicCustom"
+                  type="text"
+                  placeholder="Write your own topic"
+                />
+              </label>
+
+              <div class="field-row">
+                <label class="field">
+                  <span id="language-label">Language</span>
+                  <select
+                    id="language"
+                    name="language"
+                    required
+                  >
+                    <option value="English">English</option>
+                    <option value="Eesti">Eesti</option>
+                  </select>
+                </label>
+
+                <label class="field field-small">
+                  <span id="days-label">Days</span>
+                  <input
+                    id="days"
+                    name="days"
+                    type="number"
+                    min="1"
+                    max="30"
+                    value="5"
+                    required
+                  />
+                </label>
+              </div>
+
+              <label class="field">
+                <span id="source-text-label">Source text</span>
+                <textarea
+                  id="sourceText"
+                  name="sourceText"
+                  rows="12"
+                  placeholder="Paste long source material here. This can be many paragraphs or multiple pages."
+                ></textarea>
+              </label>
+
+              <div class="form-actions">
+                <button type="submit" class="button primary" id="generate-button">
+                  Generate Markdown course
+                </button>
+              </div>
+
+              <p class="helper-text" id="form-helper-text">
+                Generated files are saved under <code>generated-courses/</code>.
+              </p>
+            </form>
+          </section>
+
+          <section class="panel library-panel">
+            <div class="panel-head">
+              <div>
+                <h2 id="library-title">Learning files</h2>
+                <p id="library-subtitle">Folders and Markdown files from <code>generated-courses</code>.</p>
+              </div>
+              <button type="button" class="button ghost small" id="refresh-library-button">
+                Refresh
+              </button>
+            </div>
+
+            <div id="library-tree" class="library-tree"></div>
+          </section>
+        </aside>
+
+        <section class="viewer panel">
+          <div class="viewer-toolbar">
+            <div class="viewer-path">
+              <div class="viewer-label" id="viewer-open-label">Open file</div>
+              <div class="viewer-value" id="viewer-path">No file selected</div>
+            </div>
+
+            <div class="viewer-actions">
+              <button type="button" class="button small active" data-view-mode="preview">
+                Preview
+              </button>
+              <button type="button" class="button small" data-view-mode="raw">
+                Raw
+              </button>
+              <button type="button" class="button small" id="download-file-button" disabled>
+                Download .md
+              </button>
+            </div>
+          </div>
+
+          <div class="viewer-meta" id="viewer-meta">Select a Markdown file to preview it.</div>
+
+          <section id="empty-state" class="empty-state">
+            <h2 id="empty-title">No Markdown file selected</h2>
+            <p id="empty-text">
+              Generate a course or choose a file from the left sidebar. The right side will render the Markdown in a GitHub-like preview.
+            </p>
+          </section>
+
+          <article id="markdown-preview" class="markdown-body markdown-surface hidden"></article>
+          <pre id="markdown-raw" class="raw-surface hidden"></pre>
+        </section>
+      </main>
+    </div>
+
+    <div id="toast" class="toast" aria-live="polite" aria-atomic="true"></div>
+  </body>
+</html>
