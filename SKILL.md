@@ -144,6 +144,17 @@ Return ONLY a valid JSON object with this structure:
 1. [Question 1]
 2. [Question 2]
 
+## Answers
+
+<details>
+<summary>Click to reveal answers</summary>
+
+**1. [Answer to Question 1]**
+
+**2. [Answer to Question 2]**
+
+</details>
+
 ## Quick Checklist
 
 - [ ] I understand [Concept A]

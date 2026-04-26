@@ -300,14 +300,22 @@ async function generateCourse(input) {
     : "No source text was provided. Build the course from general domain knowledge and keep it practical.";
 
   const systemPrompt = [
-    "You generate complete learning courses as Markdown files.",
+    "You generate complete learning courses as Markdown files using the course generator methodology.",
     "Return only valid JSON that matches the provided schema.",
     "The content must read well in a GitHub Markdown preview.",
     "Do not use HTML. Use Markdown headings, bullet lists, tables where useful, fenced code blocks if relevant, and short paragraphs.",
     "The requested language must be used consistently throughout the course.",
     "Create one README overview file plus one standalone day file per day.",
     "Each day markdown must start with a level-1 heading in the form '# Day N: Title'.",
-    "Each day file should include these sections in Markdown: Learning Objectives, Key Concepts, Guided Explanation, Practical Exercise, Reflection Questions, and Quick Checklist.",
+    "Each day file MUST include these sections in order:",
+    "1. Learning Objectives (bullet points with ✅)",
+    "2. Key Concepts (2-3 subheadings with explanations)",
+    "3. Guided Explanation (teaching content with examples)",
+    "4. Practical Exercise (with clear task, verification, and hint)",
+    "5. Reflection Questions (2-3 questions)",
+    "6. Answers (hidden in <details> markdown dropdown)", 
+    "7. Quick Checklist (checkbox items)",
+    "Use <details><summary>Click to reveal answers</summary> format for hidden answers.",
   ].join(" ");
 
   const userPrompt = [
@@ -542,6 +550,10 @@ async function serveStaticAsset(pathname, response) {
     "/app.js": {
       filePath: path.join(__dirname, "app.js"),
       contentType: "text/javascript; charset=utf-8",
+    },
+    "/SKILL.md": {
+      filePath: path.join(__dirname, "SKILL.md"),
+      contentType: "text/markdown; charset=utf-8",
     },
     "/vendor/github-markdown-dark.css": {
       filePath: path.join(
